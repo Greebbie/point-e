@@ -1,34 +1,14 @@
-# module helps text image fusion
+
 import torch
 import torch.nn as nn
 
-class TextImageFusionModule(nn.Module):
-    def __init__(self, text_dim=768, image_dim=1024, fusion_dim=1024):
-        super().__init__()
-        self.text_proj = nn.Linear(text_dim, fusion_dim)
-        self.image_proj = nn.Linear(image_dim, fusion_dim)
-        
-        self.fusion = nn.Sequential(
-            nn.Linear(fusion_dim * 2, fusion_dim),
-            nn.LayerNorm(fusion_dim),
-            nn.GELU(),
-            nn.Linear(fusion_dim, fusion_dim)
-        )
-    
-    def forward(self, text_emb, image_emb):
-        text_proj = self.text_proj(text_emb)
-        image_proj = self.image_proj(image_emb)
-        
-        fused = torch.cat([text_proj, image_proj], dim=-1)
-        return self.fusion(fused)
 
-
-# attention definition here
 class CrossAttentionLayer(nn.Module):
     def __init__(self, dim, heads=8):
         super().__init__()
         self.dim = dim
         self.heads = heads
+        assert dim % heads == 0, f"dim {dim} must be divisible by heads {heads}"
         self.head_dim = dim // heads
         
         # Multi-head attention components
@@ -38,6 +18,7 @@ class CrossAttentionLayer(nn.Module):
         self.out_proj = nn.Linear(dim, dim)
         
         self.norm1 = nn.LayerNorm(dim)
+        self.context_norm = nn.LayerNorm(dim)
         self.norm2 = nn.LayerNorm(dim)
         
         # Feed-forward network
@@ -64,7 +45,7 @@ class CrossAttentionLayer(nn.Module):
     def forward(self, x, context):
         residual = x
         x = self.norm1(x)
-        context = self.norm1(context)
+        context = self.context_norm(context)
         
         q = self.q_proj(x)
         k = self.k_proj(context)
@@ -77,56 +58,41 @@ class CrossAttentionLayer(nn.Module):
         x = self.ffn(x) + residual
         
         return x
-    
+
 class TextImageFusionModule(nn.Module):
-    def __init__(self, text_dim=768, image_dim=1024, fusion_dim=1024, use_cross_attention=True):
+    def __init__(self, 
+                 clip_dim=768, 
+                 fusion_dim=512, 
+                 use_cross_attention=True, 
+                 heads=8):
         super().__init__()
-        self.text_proj = nn.Linear(text_dim, fusion_dim)
-        self.image_proj = nn.Linear(image_dim, fusion_dim)
-        self.use_cross_attention = use_cross_attention
+        self.text_proj = nn.Linear(clip_dim, fusion_dim)
+        self.image_proj = nn.Linear(clip_dim, fusion_dim)  # works on (B,N,clip_dim)
         
         if use_cross_attention:
-            # Option 2: Cross-attention between text and image
-            self.text_to_image_attn = CrossAttentionLayer(fusion_dim)
-            self.image_to_text_attn = CrossAttentionLayer(fusion_dim)
-            self.final_proj = nn.Linear(fusion_dim * 2, fusion_dim)
+            self.t2i = CrossAttentionLayer(fusion_dim, heads)
+            self.i2t = CrossAttentionLayer(fusion_dim, heads)
+            self.final = nn.Linear(fusion_dim, fusion_dim)
         else:
-            # Option 1: Simple concatenation
-            self.fusion = nn.Sequential(
+            self.fuse = nn.Sequential(
                 nn.Linear(fusion_dim * 2, fusion_dim),
-                nn.LayerNorm(fusion_dim),
                 nn.GELU(),
-                nn.Linear(fusion_dim, fusion_dim)
+                nn.LayerNorm(fusion_dim),
+                nn.Linear(fusion_dim, fusion_dim),
             )
     
-    def forward(self, text_emb, image_emb):
-        text_proj = self.text_proj(text_emb)
-        image_proj = self.image_proj(image_emb)
+    def forward(self, text_emb, img_tokens):
+        """
+        text_emb   : [B, 768]
+        img_tokens : [B, N, 768]  (N ≈ 196 for 224px ViT-L/14)
+        """
+        txt = self.text_proj(text_emb).unsqueeze(1)        # [B,1,F]
+        img = self.image_proj(img_tokens)                  # [B,N,F]
         
-        if self.use_cross_attention:
-            # Add batch dimension if needed for single embeddings
-            if text_proj.dim() == 1:
-                text_proj = text_proj.unsqueeze(0)
-            if image_proj.dim() == 1:
-                image_proj = image_proj.unsqueeze(0)
-                
-            if text_proj.dim() == 2:
-                text_proj = text_proj.unsqueeze(1)
-            if image_proj.dim() == 2:
-                image_proj = image_proj.unsqueeze(1)
-            
-            # Cross-attention in both directions
-            text_attended = self.text_to_image_attn(text_proj, image_proj)
-            image_attended = self.image_to_text_attn(image_proj, text_proj)
-            
-            # Combine attended features
-            batch_size = text_proj.shape[0]
-            text_attended = text_attended.view(batch_size, -1)
-            image_attended = image_attended.view(batch_size, -1)
-            
-            combined = torch.cat([text_attended, image_attended], dim=-1)
-            return self.final_proj(combined)
+        if hasattr(self, "t2i"):
+            q_txt = self.t2i(txt, img).squeeze(1)          # [B,F]
+            img2t = self.i2t(img, txt).mean(dim=1)         # [B,F]
+            return self.final((q_txt + img2t) * 0.5)       # [B,F]
         else:
-            # Simple concatenation
-            fused = torch.cat([text_proj, image_proj], dim=-1)
-            return self.fusion(fused)
+            pooled = img.mean(dim=1)                       # [B,F]
+            return self.fuse(torch.cat([txt.squeeze(1), pooled], dim=-1))
