@@ -26,3 +26,8 @@ For our Blender rendering code, see [blender_script.py](point_e/evals/scripts/bl
 You can download the seed images and point clouds corresponding to the paper banner images [here](https://openaipublic.azureedge.net/main/point-e/banner_pcs.zip).
 
 You can download the seed images used for COCO CLIP R-Precision evaluations [here](https://openaipublic.azureedge.net/main/point-e/coco_images.zip).
+
+Dataset:
+Bundle of a 2D reference img, 3D point cloud and text caption for diffusion.
+ShapeNetCore.v2[here](https://www.kaggle.com/datasets/hajareddagni/shapenetcorev2?resource=download).
+Caption with BLIP [here](https://huggingface.co/docs/transformers/en/model_doc/blip).
