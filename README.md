@@ -31,8 +31,8 @@ You can download the seed images used for COCO CLIP R-Precision evaluations [her
 
 Bundle of a 2D reference img, 3D point cloud and text caption for diffusion.
 
-DRACO [here](https://github.com/RahulSajnani/DRACO-Weakly-Supervised-Dense-Reconstruction-And-Canonicalization-of-Objects)
+Cap3D [here](https://huggingface.co/datasets/tiange/Cap3D)
 
-ShapeNetCore.v2[here](https://www.kaggle.com/datasets/hajareddagni/shapenetcorev2?resource=download).
+uses the ABO version which captioned with BLIP [here](https://huggingface.co/docs/transformers/en/model_doc/blip).
 
-Caption with BLIP [here](https://huggingface.co/docs/transformers/en/model_doc/blip).
+The script for generating the dataset refer to (point-e/download_data and generate_dataset)
