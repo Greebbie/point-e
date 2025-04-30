@@ -64,23 +64,15 @@ class TextImageFusionModule(nn.Module):
                  text_dim=768,
                  image_dim=1024, 
                  fusion_dim=512, 
-                 use_cross_attention=False, 
                  heads=8):
         super().__init__()
         self.text_proj = nn.Linear(text_dim, fusion_dim)
         self.image_proj = nn.Linear(image_dim, fusion_dim)  # works on (B,N,clip_dim)
         
-        if use_cross_attention:
-            self.t2i = CrossAttentionLayer(fusion_dim, heads)
-            self.i2t = CrossAttentionLayer(fusion_dim, heads)
-            self.final = nn.Linear(fusion_dim, fusion_dim)
-        else:
-            self.fuse = nn.Sequential(
-                nn.Linear(fusion_dim * 2, fusion_dim),
-                nn.GELU(),
-                nn.LayerNorm(fusion_dim),
-                nn.Linear(fusion_dim, fusion_dim),
-            )
+        self.t2i = CrossAttentionLayer(fusion_dim, heads)
+        self.i2t = CrossAttentionLayer(fusion_dim, heads)
+        self.final = nn.Linear(fusion_dim, fusion_dim)
+
     
     def forward(self, text_emb, img_tokens):
         """

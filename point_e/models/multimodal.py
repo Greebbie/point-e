@@ -4,6 +4,7 @@ from typing import Optional, Iterable, Dict, Any
 from PIL import Image
 
 from point_e.models.configs         import MODEL_CONFIGS
+from point_e.models.fusion import TextImageFusionModule
 from point_e.models.transformer     import CLIPImageGridPointDiffusionTransformer, timestep_embedding
 from point_e.models.pretrained_clip import FrozenImageCLIP, ImageType
 
@@ -14,6 +15,7 @@ class SimpleMultimodalTransformer(CLIPImageGridPointDiffusionTransformer):
         device: torch.device,
         dtype: torch.dtype,
         cache_dir: Optional[str] = None,
+        use_cross_attention: bool = False,
     ):
         # 1) 准备父类需要的配置
         cfg     = MODEL_CONFIGS['base40M'].copy()
@@ -34,10 +36,27 @@ class SimpleMultimodalTransformer(CLIPImageGridPointDiffusionTransformer):
         # 2) 冻结 CLIP
         self.clip = FrozenImageCLIP(device=device, clip_name="ViT-L/14", cache_dir=cache_dir)
 
+        # fusion module
+
         # 3) 简单 concat->linear 融合
-        fusion_in  = self.clip.feature_dim + self.clip.grid_feature_dim
-        fusion_out = self.backbone.width
-        self.fusion = nn.Linear(fusion_in, fusion_out)
+        if  use_cross_attention == False:
+            fusion_in  = self.clip.feature_dim + self.clip.grid_feature_dim
+            fusion_out = self.backbone.width
+            self.fusion = nn.Linear(fusion_in, fusion_out)
+        else:
+            self.fusion = TextImageFusionModule(
+            text_dim=self.clip.feature_dim,        # 768
+            image_dim=self.clip.grid_feature_dim,   # e.g. 256
+            fusion_dim=self.backbone.width,         # 512
+            use_cross_attention=use_cross_attention,
+            heads=8
+        )
+        for p in self.parameters():
+            p.requires_grad = False
+        for p in self.fusion.parameters():
+            p.requires_grad = True
+        for p in self.clip_embed.parameters():
+            p.requires_grad = True
 
     def cached_model_kwargs(
         self,
@@ -49,6 +68,9 @@ class SimpleMultimodalTransformer(CLIPImageGridPointDiffusionTransformer):
         texts  = model_kwargs['texts']   # List[str]
 
         grid    = self.clip.embed_images_grid(images)    # [B, C_img, N]
+        grid = grid[:, :, 1:]           # 丢掉 CLS（第一 token）
+        grid = grid.permute(0,2,1).contiguous()
+        
         img_emb = grid.mean(dim=2)                       # [B, C_img]
         txt_emb = self.clip(batch_size=batch_size, texts=texts)  # [B, C_txt]
         fused   = self.fusion(torch.cat([txt_emb, img_emb], dim=1))  # [B, fusion_out]
