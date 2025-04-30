@@ -61,13 +61,14 @@ class CrossAttentionLayer(nn.Module):
 
 class TextImageFusionModule(nn.Module):
     def __init__(self, 
-                 clip_dim=768, 
+                 text_dim=768,
+                 image_dim=1024, 
                  fusion_dim=512, 
-                 use_cross_attention=True, 
+                 use_cross_attention=False, 
                  heads=8):
         super().__init__()
-        self.text_proj = nn.Linear(clip_dim, fusion_dim)
-        self.image_proj = nn.Linear(clip_dim, fusion_dim)  # works on (B,N,clip_dim)
+        self.text_proj = nn.Linear(text_dim, fusion_dim)
+        self.image_proj = nn.Linear(image_dim, fusion_dim)  # works on (B,N,clip_dim)
         
         if use_cross_attention:
             self.t2i = CrossAttentionLayer(fusion_dim, heads)
