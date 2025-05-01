@@ -55,7 +55,7 @@ class TextImageFusionModule(nn.Module):
     """
     Fuses text and image embeddings using bidirectional cross-attention.
     """
-    def __init__(self, text_dim=768, image_dim=1024, fusion_dim=512, heads=8):
+    def __init__(self, text_dim=768, image_dim=768, fusion_dim=768, heads=8):
         super().__init__()
         self.text_proj = nn.Linear(text_dim, fusion_dim) # 1024 ok proj already
         self.image_proj = nn.Linear(image_dim, fusion_dim)

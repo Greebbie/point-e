@@ -51,21 +51,21 @@ class SimpleMultimodalTransformer(CLIPImageGridPointDiffusionTransformer):
             cache_dir=cache_dir,
             **cfg,
         )
-        self.cond_proj = nn.Linear(1024, self.backbone.width)
-        self.text_proj = nn.Linear(768, 1024)  
-        # Use try-except for FrozenImageCLIP in case point-e wasn't fully imported
+        self.cond_proj = nn.Linear(768, self.backbone.width)
+        self.text_proj = nn.Linear(768, 768)  
+
         try:
             # Pass the explicitly stored device/dtype to FrozenImageCLIP as well
             self.clip = FrozenImageCLIP(device=self.device, clip_name="ViT-L/14", cache_dir=cache_dir)
             # Ensure the CLIP model itself is on the correct device/dtype
             self.clip.model.to(device=self.device, dtype=self.dtype)
             self.text_feature_dim = self.clip.feature_dim
-            self.image_grid_feature_dim = 1024 # ViT-L/14 patch feature dim
+            self.image_grid_feature_dim = 768 # bushi 1024 
         except NameError:
              print("Warning: FrozenImageCLIP not available. Cannot initialize CLIP.")
              self.clip = None # Set clip to None if it couldn't be initialized
              self.text_feature_dim = 768 # Default value
-             self.image_grid_feature_dim = 1024 # Default value
+             self.image_grid_feature_dim = 768 # Default value
 
 
         self.use_cross_attention = use_cross_attention
@@ -73,7 +73,7 @@ class SimpleMultimodalTransformer(CLIPImageGridPointDiffusionTransformer):
         if self.use_cross_attention:
             print("Initializing with TextImageFusionModule (Cross-Attention)")
             self.fusion = TextImageFusionModule(
-                text_dim=1024, # just hard code it for now
+                text_dim=768, # just hard code it for now
                 image_dim=self.image_grid_feature_dim,
                 fusion_dim=self.backbone.width, # Use backbone width from parent
                 heads=8
@@ -193,7 +193,9 @@ class SimpleMultimodalTransformer(CLIPImageGridPointDiffusionTransformer):
         if self.use_cross_attention:
             assert text_emb is not None and img_features is not None
             text_emb = text_emb.to(self.device, self.dtype)
+            #print(f"Text embedding shape: {text_emb.shape}")
             img_features = img_features.to(self.device, self.dtype)
+            #print(f"Image embedding shape: {img_features.shape}")
             # 如果是 [B, dim]，增加一个维度到 [B, 1, dim]
             if img_features.ndim == 2:
                 img_features = img_features.unsqueeze(1)
@@ -207,6 +209,7 @@ class SimpleMultimodalTransformer(CLIPImageGridPointDiffusionTransformer):
                 img_emb_avg = img_features.mean(dim=1)
             else:
                 img_emb_avg = img_features
+            #print(f"Image embedding shape non ca: {img_emb_avg.shape}")
             concat_emb = torch.cat([text_emb, img_emb_avg], dim=1)
             fused = self.fusion(concat_emb)
         return fused.to(self.device, self.dtype)
@@ -241,8 +244,9 @@ class SimpleMultimodalTransformer(CLIPImageGridPointDiffusionTransformer):
             assert images is not None and texts is not None
             clip_embeddings = self._get_clip_embeddings(B, images, texts)
             text_emb = clip_embeddings.get('text_emb')
-            text_emb_1024 = self.text_proj(text_emb)
+            text_emb_1024 = self.text_proj(text_emb) #102 here but indeed 768, mistake
             text_emb_proj = self.cond_proj(text_emb_1024)
+
             # 优先获取 'img_tokens'，没有则使用 'img_emb'
             img_features = clip_embeddings.get('img_tokens', clip_embeddings.get('img_emb'))
 
