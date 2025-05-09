@@ -58,7 +58,7 @@ class SimpleMultimodalTransformer(CLIPImageGridPointDiffusionTransformer):
             # Pass the explicitly stored device/dtype to FrozenImageCLIP as well
             self.clip = FrozenImageCLIP(device=self.device, clip_name="ViT-L/14", cache_dir=cache_dir)
             # Ensure the CLIP model itself is on the correct device/dtype
-            self.clip.model.to(device=self.device, dtype=self.dtype)
+            self.clip.model.to(device=self.device,dtype=torch.float32)
             self.text_feature_dim = self.clip.feature_dim
             self.image_grid_feature_dim = 768 # bushi 1024 
         except NameError:
@@ -82,7 +82,10 @@ class SimpleMultimodalTransformer(CLIPImageGridPointDiffusionTransformer):
             print("Initializing with simple Linear fusion")
             fusion_in_dim = self.text_feature_dim + self.image_grid_feature_dim
             fusion_out_dim = self.backbone.width # Use backbone width from parent
-            self.fusion = nn.Linear(fusion_in_dim, fusion_out_dim)
+            self.fusion = nn.Sequential(
+                nn.Linear(fusion_in_dim, fusion_out_dim),
+                nn.ReLU()
+            )
 
         # Move fusion module to the correct device/dtype
         self.fusion.to(device=self.device, dtype=self.dtype)
@@ -129,8 +132,7 @@ class SimpleMultimodalTransformer(CLIPImageGridPointDiffusionTransformer):
         with torch.no_grad():
             # 获取文本嵌入
             if texts is not None:
-                outputs['text_emb'] = self.clip(batch_size=batch_size, texts=texts).to(self.device, self.dtype)
-
+                outputs['text_emb'] = self.clip(batch_size=batch_size, texts=texts).to(self.device, torch.float32)
             # 获取图像嵌入
             if images is not None:
                 if not isinstance(images, torch.Tensor):
@@ -236,8 +238,9 @@ class SimpleMultimodalTransformer(CLIPImageGridPointDiffusionTransformer):
         B = x.shape[0]
         x = x.to(self.device)
         t = t.to(self.device)
-        t_embed = self.time_embed(timestep_embedding(t, self.backbone.width)).to(self.device, self.dtype)
-
+        #t_embed = self.time_embed(timestep_embedding(t, self.backbone.width)).to(self.device, self.dtype)
+        t_emb = timestep_embedding(t, self.backbone.width).to(dtype=self.dtype)
+        t_embed = self.time_embed(t_emb)
         if embeddings is not None:
             fused = embeddings.to(self.device, self.dtype)
         else:
