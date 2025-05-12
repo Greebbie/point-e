@@ -1,13 +1,14 @@
 import torch
 import torch.nn as nn
 
+
 class CrossAttentionLayer(nn.Module):
     """
     Standard Cross-Attention layer followed by a Feed-Forward Network.
     Query is derived from input 'x', Key/Value are derived from 'context'.
     Includes Layer Normalization and Residual Connections.
     """
-    def __init__(self, dim, heads=8):
+    def __init__(self, dim, heads=4):
         super().__init__()
         self.dim = dim
         self.heads = heads
@@ -22,9 +23,9 @@ class CrossAttentionLayer(nn.Module):
         self.context_norm = nn.LayerNorm(dim)
         self.norm2 = nn.LayerNorm(dim)
         self.ffn = nn.Sequential(
-            nn.Linear(dim, dim * 4),
+            nn.Linear(dim, dim),
             nn.GELU(),
-            nn.Linear(dim * 4, dim)
+            nn.Linear(dim, dim)
         )
 
     def attention(self, q, k, v):
@@ -55,13 +56,16 @@ class TextImageFusionModule(nn.Module):
     """
     Fuses text and image embeddings using bidirectional cross-attention.
     """
-    def __init__(self, text_dim=768, image_dim=768, fusion_dim=768, heads=8):
+    def __init__(self, text_dim=768, image_dim=1024, fusion_dim=512, heads=2):
         super().__init__()
         self.text_proj = nn.Linear(text_dim, fusion_dim) # 1024 ok proj already
         self.image_proj = nn.Linear(image_dim, fusion_dim)
-        self.t2i = CrossAttentionLayer(fusion_dim, heads)
+        #self.t2i = CrossAttentionLayer(fusion_dim, heads)
         self.i2t = CrossAttentionLayer(fusion_dim, heads)
-        self.final = nn.Linear(fusion_dim, fusion_dim)
+        self.final = nn.Sequential(
+            nn.Linear(fusion_dim, fusion_dim),
+            nn.LayerNorm(fusion_dim)         
+        )
 
     def forward(self, text_emb, img_tokens):
         """
@@ -73,7 +77,8 @@ class TextImageFusionModule(nn.Module):
         """
         txt = self.text_proj(text_emb).unsqueeze(1)        # [B, 1, F]
         img = self.image_proj(img_tokens)                  # [B, N, F]
-        q_txt = self.t2i(txt, img).squeeze(1)              # [B, F]
-        img2t = self.i2t(img, txt).mean(dim=1)             # [B, F]
-        fused_output = self.final((q_txt + img2t) * 0.5)   # [B, F]
+        #q_txt = self.t2i(txt, img).squeeze(1)              # [B, F]
+        img2t = self.i2t(img, txt)            # [B, F]
+        #fused_output = self.final((q_txt + img2t) * 0.5)   # [B, F]
+        fused_output = self.final(img2t)
         return fused_output
