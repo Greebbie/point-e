@@ -15,13 +15,6 @@ We clean up our code in mainly the following notebooks:
 * [sepe.py](point_e/models/sepe.py) - the file contains our main model architecture extended from PointDiffusionTransformer where fuse the text and img inputs
 * [fusion.py](point_e/models/fusion.py) - the file contains TextImgFusion Class where crossattention is used
 
-To get started with examples, see the following notebooks:
-
- * [image2pointcloud.ipynb](point_e/examples/image2pointcloud.ipynb) - sample a point cloud, conditioned on some example synthetic view images.
- * [text2pointcloud.ipynb](point_e/examples/text2pointcloud.ipynb) - use our small, worse quality pure text-to-3D model to produce 3D point clouds directly from text descriptions. This model's capabilities are limited, but it does understand some simple categories and colors.
- * [pointcloud2mesh.ipynb](point_e/examples/pointcloud2mesh.ipynb) - try our SDF regression model for producing meshes from point clouds.
-
-
 # Dataset
 
 Bundle of a 2D reference img, 3D point cloud and text caption for diffusion.
