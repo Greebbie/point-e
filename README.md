@@ -1,11 +1,12 @@
-# Point·E
-
+# Semantic Enhanced Point-E
 
 This work based on [Point-E: A System for Generating 3D Point Clouds from Complex Prompts](https://arxiv.org/abs/2212.08751).
 
+The purpose of Semantic Enhanced Point-E is to improve the quality and semantic accuracy of 3D point cloud generation from complex text prompts. Extended from original work mode between text prompt to 3D point cloud generation and image to 3D point cloud reconstruction. By incorporating advanced semantic enhancements, this project builds on the original Point-E system to produce 3D models that more precisely align with detailed and nuanced descriptions, enabling richer and more contextually accurate representations.
+
 # Usage
 
-Extend from Point-E paper
+Extend from Point-E paper. 
 
 To Start
 Install with `pip install -e .`.
