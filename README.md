@@ -1,12 +1,19 @@
 # Point·E
 
-![Animation of four 3D point clouds rotating](point_e/examples/paper_banner.gif)
 
-This is the official code and model release for [Point-E: A System for Generating 3D Point Clouds from Complex Prompts](https://arxiv.org/abs/2212.08751).
+This work based on [Point-E: A System for Generating 3D Point Clouds from Complex Prompts](https://arxiv.org/abs/2212.08751).
 
 # Usage
 
+Extend from Point-E paper
+
+To Start
 Install with `pip install -e .`.
+
+We clean up our code in mainly the following notebooks:
+* [simple_train.ipynb](point_e/examples/simple_train.ipynb) - the notebook contains 2 sections preload the data and training & load the model to virtualize
+* [sepe.py](point_e/models/sepe.py) - the file contains our main model architecture extended from PointDiffusionTransformer where fuse the text and img inputs
+* [fusion.py](point_e/models/fusion.py) - the file contains TextImgFusion Class where crossattention is used
 
 To get started with examples, see the following notebooks:
 
@@ -14,18 +21,6 @@ To get started with examples, see the following notebooks:
  * [text2pointcloud.ipynb](point_e/examples/text2pointcloud.ipynb) - use our small, worse quality pure text-to-3D model to produce 3D point clouds directly from text descriptions. This model's capabilities are limited, but it does understand some simple categories and colors.
  * [pointcloud2mesh.ipynb](point_e/examples/pointcloud2mesh.ipynb) - try our SDF regression model for producing meshes from point clouds.
 
-For our P-FID and P-IS evaluation scripts, see:
-
- * [evaluate_pfid.py](point_e/evals/scripts/evaluate_pfid.py)
- * [evaluate_pis.py](point_e/evals/scripts/evaluate_pis.py)
-
-For our Blender rendering code, see [blender_script.py](point_e/evals/scripts/blender_script.py)
-
-# Samples
-
-You can download the seed images and point clouds corresponding to the paper banner images [here](https://openaipublic.azureedge.net/main/point-e/banner_pcs.zip).
-
-You can download the seed images used for COCO CLIP R-Precision evaluations [here](https://openaipublic.azureedge.net/main/point-e/coco_images.zip).
 
 # Dataset
 
@@ -35,4 +30,4 @@ Cap3D [here](https://huggingface.co/datasets/tiange/Cap3D)
 
 uses the ABO version which captioned with BLIP [here](https://huggingface.co/docs/transformers/en/model_doc/blip).
 
-The script for generating the dataset refer to (point-e/download_data and generate_dataset)
+The script for process the downloaded data and generating the dataset refer to (* [download_data.py](point-e/download_data.py) and * [generate_dataset.py](point-e/generate_dataset.py)). The generated dataset.jsonl file need to be placed at upper level folder for the uid match.
