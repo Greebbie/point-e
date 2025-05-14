@@ -25,3 +25,5 @@ Cap3D [here](https://huggingface.co/datasets/tiange/Cap3D)
 uses the ABO version which captioned with BLIP [here](https://huggingface.co/docs/transformers/en/model_doc/blip).
 
 The script for process the downloaded data and generating the dataset refer to (* [download_data.py](point-e/download_data.py) and * [generate_dataset.py](point-e/generate_dataset.py)). The generated dataset.jsonl file need to be placed at upper level folder for the uid match.
+
+A larger size of training data with rich varities of types are strongly encouraged for better performance.
