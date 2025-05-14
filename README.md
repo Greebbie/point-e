@@ -11,7 +11,7 @@ Extend from Point-E paper.
 To Start
 Install with `pip install -e .`.
 
-We clean up our code in mainly the following notebooks:
+The code notebooks are cleaned up in mainly the following notebooks:
 * [simple_train.ipynb](point_e/examples/simple_train.ipynb) - the notebook contains 2 sections preload the data and training & load the model to virtualize
 * [sepe.py](point_e/models/sepe.py) - the file contains our main model architecture extended from PointDiffusionTransformer where fuse the text and img inputs. We takes pre-trained Base 40M weights.
 * [fusion.py](point_e/models/fusion.py) - the file contains TextImgFusion Class where crossattention is used
